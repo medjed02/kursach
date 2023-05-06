@@ -1,12 +1,12 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
 
-import numpy as np
-import glob
-import os
+from PIL import Image, ImageEnhance
 import argparse
 import cv2
-from PIL import Image, ImageEnhance
+import glob
+import numpy as np
+import os
 
 
 class ImageLoader:
@@ -15,25 +15,37 @@ class ImageLoader:
         self.output_name = output_name
         self.images = []
         self.filenames = []
+        self.files = []
 
     def load_images(self):
         if os.path.isdir(self.input_name):
-            files = glob.glob(self.input_name + '/**/*.png', recursive=True)
+            self.files = glob.glob(self.input_name + '/**/*.png', recursive=True)
         elif os.path.isabs(self.input_name):
-            files = [self.input_name]
-        self.filenames = ["result_" + file.split('\\')[-1] for file in files]
-        self.images = [np.array(Image.open(file), dtype=np.float64) for file in files]
+            self.files = [self.input_name]
+        self.filenames = ["result_" + file.split('\\')[-1] for file in self.files]
+        self.images = [np.array(Image.open(file), dtype=np.float64) for file in self.files]
 
     def upload_images(self, processed_images):
         # TODO len(processed_images) != len(self.filenames)
         for i in range(len(processed_images)):
             filename = os.path.join(self.output_name, self.filenames[i])
-            print(cv2.imwrite(filename, processed_images[i]))
+            is_success, im_buf_arr = cv2.imencode(".png", processed_images[i])
+            im_buf_arr.tofile(filename)
+            # TODO is not success
+
+    def print_verdicts(self, verdicts):
+        # TODO len(verdicts) != len(self.filenames)
+        for i in range(len(verdicts)):
+            if verdicts[i]:
+                print(f"{self.files[i]}: дефект найден")
+            else:
+                print(f"{self.files[i]}: дефект не найден")
 
 
 class ImageAnalyzer:
     def __init__(self, images):
         self.images = images
+        self.verdicts = []
 
     def clear_noise(self):
         for i in range(len(self.images)):
@@ -63,6 +75,10 @@ class ImageAnalyzer:
     def find_defects(self):
         for i in range(len(self.images)):
             self.images[i] = cv2.Canny(self.images[i], 150, 190)
+            if len(set(self.images[i].flatten())) != 0:
+                self.verdicts.append(True)
+            else:
+                self.verdicts.append(False)
 
 
 def create_parser():
@@ -84,4 +100,5 @@ if __name__ == "__main__":
     analyzer.clear_noise()
     analyzer.find_defects()
 
+    loader.print_verdicts(analyzer.verdicts)
     loader.upload_images(analyzer.images)
