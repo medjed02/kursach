@@ -1,5 +1,1 @@
-<<<<<<< HEAD
-first commit
-=======
-# kursach
->>>>>>> Initial commit
+Initial commit
