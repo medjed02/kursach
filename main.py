@@ -10,9 +10,8 @@ import os
 
 
 class ImageLoader:
-    def __init__(self, input_name, output_name):
+    def __init__(self, input_name):
         self.input_name = input_name
-        self.output_name = output_name
         self.images = []
         self.filenames = []
         self.files = []
@@ -22,13 +21,13 @@ class ImageLoader:
             self.files = glob.glob(self.input_name + '/**/*.png', recursive=True)
         elif os.path.isabs(self.input_name):
             self.files = [self.input_name]
-        self.filenames = ["result_" + file.split('\\')[-1] for file in self.files]
         self.images = [np.array(Image.open(file), dtype=np.float64) for file in self.files]
 
-    def upload_images(self, processed_images):
+    def upload_images(self, processed_images, output_name):
         # TODO len(processed_images) != len(self.filenames)
+        self.filenames = ["result_" + file.split('\\')[-1] for file in self.files]
         for i in range(len(processed_images)):
-            filename = os.path.join(self.output_name, self.filenames[i])
+            filename = os.path.join(output_name, self.filenames[i])
             is_success, im_buf_arr = cv2.imencode(".png", processed_images[i])
             im_buf_arr.tofile(filename)
             # TODO is not success
@@ -84,7 +83,7 @@ class ImageAnalyzer:
 def create_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('input', nargs='?')
-    parser.add_argument('output', nargs='?')
+    parser.add_argument('-o', '--output', default=None)
 
     return parser
 
@@ -93,7 +92,7 @@ if __name__ == "__main__":
     parser = create_parser()
     args = parser.parse_args()
 
-    loader = ImageLoader(args.input, args.output)
+    loader = ImageLoader(args.input)
     loader.load_images()
 
     analyzer = ImageAnalyzer(loader.images)
@@ -101,4 +100,6 @@ if __name__ == "__main__":
     analyzer.find_defects()
 
     loader.print_verdicts(analyzer.verdicts)
-    loader.upload_images(analyzer.images)
+
+    if args.output:
+        loader.upload_images(analyzer.images, args.output)
