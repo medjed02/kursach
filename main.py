@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 
 from PIL import Image, ImageEnhance
+from sys import exit
 import argparse
 import cv2
 import glob
@@ -21,10 +22,16 @@ class ImageLoader:
             self.files = glob.glob(self.input_name + '/**/*.png', recursive=True)
         elif os.path.isabs(self.input_name):
             self.files = [self.input_name]
+        else:
+            print("Ошибка исходных данных: Папки или файла с указанным путём не существует")
+            exit(-1)
         self.images = [np.array(Image.open(file), dtype=np.float64) for file in self.files]
 
     def upload_images(self, processed_images, output_name):
         # TODO len(processed_images) != len(self.filenames)
+        if not os.path.isdir(output_name):
+            print("Ошибка исходных данных: Папки или файла с указанным путём не существует")
+            exit(-1)
         self.filenames = ["result_" + os.path.basename(file) for file in self.files]
         for i in range(len(processed_images)):
             filename = os.path.join(output_name, self.filenames[i])
