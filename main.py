@@ -25,7 +25,7 @@ class ImageLoader:
 
     def upload_images(self, processed_images, output_name):
         # TODO len(processed_images) != len(self.filenames)
-        self.filenames = ["result_" + file.split('\\')[-1] for file in self.files]
+        self.filenames = ["result_" + os.path.basename(file) for file in self.files]
         for i in range(len(processed_images)):
             filename = os.path.join(output_name, self.filenames[i])
             is_success, im_buf_arr = cv2.imencode(".png", processed_images[i])
@@ -74,7 +74,7 @@ class ImageAnalyzer:
     def find_defects(self):
         for i in range(len(self.images)):
             self.images[i] = cv2.Canny(self.images[i], 150, 190)
-            if len(set(self.images[i].flatten())) != 0:
+            if len(set(self.images[i].flatten())) > 1:
                 self.verdicts.append(True)
             else:
                 self.verdicts.append(False)
