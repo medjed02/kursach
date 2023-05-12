@@ -51,7 +51,7 @@ class ImageLoader:
         for i in range(len(verdicts)):
             if verdicts[i]:
                 print(f"{self.files[i]}: дефект найден")
-                for rec in rectangles:
+                for rec in rectangles[i]:
                     print(*rec)
             else:
                 print(f"{self.files[i]}: дефект не найден")
@@ -76,7 +76,9 @@ class ImageAnalyzer:
         image = np.fft.ifft2(image).real
 
         # increase contrast for median blur of the noise
-        image = Image.fromarray(image.astype(int)).convert(mode="L")
+        image[image < 0] = 0
+        image[image > 255] = 255
+        image = Image.fromarray(image.astype('uint8')).convert(mode="L")
         image = ImageEnhance.Contrast(image).enhance(30)
         image = np.array(image, dtype=np.float64)
         image[0:60, :] = 0
@@ -110,32 +112,33 @@ class ImageAnalyzer:
                         if 0 <= x < new_image.shape[0] and 0 <= y < new_image.shape[1]:
                             new_image[x, y] = 255
 
+            # get verdicts
+            if len(set(self.images[i].flatten())) > 1:
+                self.verdicts.append(True)
+            else:
+                self.verdicts.append(False)
+
             # return to start image and increase contrast
-            self.images[i] = Image.fromarray(self.start_images[i].astype(int)).convert(mode="L")
+            self.images[i] = Image.fromarray(self.start_images[i].astype('uint8')).convert(mode="L")
             self.images[i] = ImageEnhance.Contrast(self.images[i]).enhance(30)
             self.images[i] = np.array(self.images[i], dtype='uint8')
             self.images[i] = cv2.cvtColor(self.images[i], cv2.COLOR_GRAY2BGR)
 
             # find contours of "blured" boundaries and fit them into rectangles in the contrasted start image
             contours, _ = cv2.findContours(new_image.astype('uint8'), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+            self.defect_rectangles.append([])
             for contour in contours:
                 x1, y1, len_x, len_y = cv2.boundingRect(contour)
                 if min(len_x, len_y) < 60:
                     size = 120
                 else:
                     size = 200
-                self.defect_rectangles.append((x1 + len_x // 2 - size // 2,
-                                               y1 + len_y // 2 - size // 2,
-                                               x1 + len_x // 2 + size // 2,
-                                               y1 + len_y // 2 + size // 2))
-                cv2.rectangle(self.images[i], (self.defect_rectangles[-1][0], self.defect_rectangles[-1][1]),
-                              (self.defect_rectangles[-1][2], self.defect_rectangles[-1][3]), (0, 0, 255), 3)
-
-            # get verdicts
-            if len(set(self.images[i].flatten())) > 1:
-                self.verdicts.append(True)
-            else:
-                self.verdicts.append(False)
+                self.defect_rectangles[i].append((x1 + len_x // 2 - size // 2,
+                                                  y1 + len_y // 2 - size // 2,
+                                                  x1 + len_x // 2 + size // 2,
+                                                  y1 + len_y // 2 + size // 2))
+                cv2.rectangle(self.images[i], (self.defect_rectangles[i][-1][0], self.defect_rectangles[i][-1][1]),
+                              (self.defect_rectangles[i][-1][2], self.defect_rectangles[i][-1][3]), (0, 0, 255), 3)
 
 
 def create_parser():
